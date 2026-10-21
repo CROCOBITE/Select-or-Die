@@ -61,7 +61,7 @@ export default function Dashboard({ project, artifacts }) {
       </section>
 
       <section className="pz-tiles" aria-label="Indicators">
-        <Tile value={late.length} label="Milestones past baseline (lagging)" />
+        <Tile value={late.length} label="Milestones past reference date (lagging)" />
         <Tile value={d.raid.openRisks} label="Open risks (leading)" warn={d.raid.risksByRag.High ? `${d.raid.risksByRag.High} High` : null} />
         <Tile value={d.raid.openIssues} label="Open issues" warn={d.raid.issuesByRag.High ? `${d.raid.issuesByRag.High} High` : null} />
         <Tile value={d.raid.ownersTbc} label="Entries with owner TBC" warn={d.raid.ownersTbc ? 'resolve' : null} />
@@ -72,8 +72,8 @@ export default function Dashboard({ project, artifacts }) {
       </section>
 
       <section className="pz-card">
-        <h2>Schedule against baseline</h2>
-        <p className="pz-muted">Bar = baseline window. Dashed line = slippage to today ({d.today}). Hover a row for details; the schedule table below has every value.</p>
+        <h2>Schedule against reference dates (proposed)</h2>
+        <p className="pz-muted">Bar = reference window. Dashed line = slippage to today ({d.today}). Hover a row for details; the schedule table below has every value.</p>
         <ScheduleChart rows={d.schedule} today={d.today} />
       </section>
 
@@ -98,7 +98,7 @@ export default function Dashboard({ project, artifacts }) {
 
       <section className="pz-card">
         <h2>Schedule table</h2>
-        <Table rows={d.schedule.map((s) => ({ ID: s.id, Milestone: s.name, Start: s.start ?? '–', Finish: s.end ?? '–', Status: s.status, 'Days past baseline': s.daysLate || '' }))} cols={['ID', 'Milestone', 'Start', 'Finish', 'Status', 'Days past baseline']} />
+        <Table rows={d.schedule.map((s) => ({ ID: s.id, Milestone: s.name, Start: s.start ?? '–', Finish: s.end ?? '–', Status: s.status, 'Days past reference date': s.daysLate || '' }))} cols={['ID', 'Milestone', 'Start', 'Finish', 'Status', 'Days past reference date']} />
       </section>
     </>
   );

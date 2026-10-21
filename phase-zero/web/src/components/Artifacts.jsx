@@ -227,6 +227,7 @@ function ArtifactView({ id, status, user, onChanged }) {
         </div>
         <div className="pz-row">
           {['md', 'docx', 'xlsx'].map((f) => <a key={f} className="pz-btn" href={exportUrl(art.id, f)}>{f === 'md' ? 'Markdown' : f === 'docx' ? 'Word' : 'Excel'}</a>)}
+          {art.type === 'executive' && <a className="pz-btn primary" href={exportUrl(art.id, 'html')}>Executive page (HTML)</a>}
         </div>
       </div>
       <div className="pz-tabs" role="tablist">
@@ -253,12 +254,33 @@ function ArtifactView({ id, status, user, onChanged }) {
   );
 }
 
-export default function Artifacts({ artifacts, status, user, onChanged, selected, onSelect }) {
+function NewFromTemplate({ project, user, onCreated }) {
+  const [teams, setTeams] = useState('');
+  const [error, setError] = useState('');
+  const create = async (type) => {
+    setError('');
+    try {
+      const a = await api.post(`/api/projects/${project.id}/artifacts`, { type, by: user, teams: teams.split(',').map((t) => t.trim()).filter(Boolean).join('\n') });
+      onCreated(a.id);
+    } catch (e) { setError(e.message); }
+  };
+  return (
+    <div className="pz-row" style={{ marginBottom: 10 }}>
+      <button className="pz-btn" onClick={() => create('kpi-reply')}>+ Leadership KPI reply (Table A / B)</button>
+      <input className="pz-btn" value={teams} onChange={(e) => setTeams(e.target.value)} placeholder="Teams for the executive page, comma-separated" aria-label="Teams" />
+      <button className="pz-btn" onClick={() => create('executive')}>+ Executive per-team page</button>
+      <ErrorNote error={error} />
+    </div>
+  );
+}
+
+export default function Artifacts({ project, artifacts, status, user, onChanged, selected, onSelect }) {
   const current = selected && artifacts.find((a) => a.id === selected);
   return (
     <>
       <section className="pz-card">
         <h2>Artifacts</h2>
+        {project && <NewFromTemplate project={project} user={user} onCreated={(id) => { onChanged(); onSelect(id); }} />}
         <div className="pz-table-wrap">
           <table className="pz-table">
             <thead><tr><th>Key</th><th>Title</th><th>Gate</th><th>Version</th><th>Last change</th><th>Review score</th><th>Sign-off</th></tr></thead>

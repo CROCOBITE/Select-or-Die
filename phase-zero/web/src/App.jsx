@@ -7,6 +7,9 @@ import Generator from './components/Generator.jsx';
 import Publish from './components/Publish.jsx';
 import Teams from './components/Teams.jsx';
 import CodeReview from './components/CodeReview.jsx';
+import Skills from './components/Skills.jsx';
+import Tickets from './components/Tickets.jsx';
+import Minutes from './components/Minutes.jsx';
 import { ErrorNote } from './components/ui.jsx';
 
 const VIEWS = [
@@ -14,10 +17,30 @@ const VIEWS = [
   ['gates', 'Gates & PMO guide'],
   ['artifacts', 'Artifacts & versions'],
   ['teams', 'Teams chat log'],
+  ['minutes', 'Meeting minutes'],
+  ['tickets', 'Ticket export'],
   ['publish', 'Publish to ADO'],
   ['code', 'Code review'],
+  ['skills', 'Skills checklist'],
   ['new', '+ New project'],
 ];
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem('pz-theme') || ''; } catch { return ''; } });
+  const set = (v) => {
+    const next = theme === v ? '' : v;
+    setTheme(next);
+    if (next) document.documentElement.dataset.theme = next;
+    else delete document.documentElement.dataset.theme;
+    try { next ? localStorage.setItem('pz-theme', next) : localStorage.removeItem('pz-theme'); } catch { /* storage unavailable */ }
+  };
+  return (
+    <div className="pz-theme" role="group" aria-label="Theme">
+      <button aria-pressed={theme === 'light'} title="Light (click again for system)" onClick={() => set('light')}>☀</button>
+      <button aria-pressed={theme === 'dark'} title="Dark (click again for system)" onClick={() => set('dark')}>☾</button>
+    </div>
+  );
+}
 
 const remember = (k, v) => { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } };
 const recall = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
@@ -69,12 +92,13 @@ export default function App() {
         </div>
       </nav>
       <main className="pz-main">
-        <header className="pz-header">
+        <header className="pz-header shell">
           <div>
             <h1>{view === 'new' ? 'New project' : project?.name || 'Phase Zero'}</h1>
             {project && view !== 'new' && <p>{project.goal}</p>}
           </div>
           <label className="pz-row">
+            <ThemeToggle />
             <span className="pz-muted">Signed in as</span>
             <input className="pz-btn" value={user} onChange={(e) => { setUser(e.target.value); remember('pz.user', e.target.value); }} placeholder="Your name (for versions & sign-off)" />
           </label>
@@ -82,12 +106,15 @@ export default function App() {
         <ErrorNote error={error} />
         {view === 'new' && <Generator onCreated={created} />}
         {view === 'code' && status && <CodeReview status={status} />}
+        {view === 'skills' && <Skills />}
+        {view === 'tickets' && <Tickets />}
         {project && status && (
           <>
             {view === 'dashboard' && <Dashboard project={project} artifacts={project.artifacts} />}
             {view === 'gates' && <Gates project={project} artifacts={project.artifacts} user={user} onChanged={loadProject} onOpen={openArtifact} />}
-            {view === 'artifacts' && <Artifacts artifacts={project.artifacts} status={status} user={user} onChanged={loadProject} selected={selected} onSelect={setSelected} />}
+            {view === 'artifacts' && <Artifacts project={project} artifacts={project.artifacts} status={status} user={user} onChanged={loadProject} selected={selected} onSelect={setSelected} />}
             {view === 'teams' && <Teams project={project} user={user} />}
+            {view === 'minutes' && <Minutes project={project} user={user} onSaved={(id) => { loadProject(); openArtifact(id); }} />}
             {view === 'publish' && <Publish project={project} status={status} user={user} />}
           </>
         )}

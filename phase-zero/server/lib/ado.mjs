@@ -12,6 +12,16 @@ const PRIORITY = { must: 1, should: 2, could: 3, "won't": 4, wont: 4 };
 const html = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const md2html = (s) => html(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\*([^*]+)\*/g, '<i>$1</i>');
 
+/** Area and iteration paths carry no trailing separator, or matching returns zero rows. */
+export function validateTarget(target) {
+  const problems = [];
+  if (!target?.project) problems.push('project is not set');
+  if (!target?.areaPath) problems.push('areaPath is not set');
+  for (const k of ['areaPath', 'iterationPath']) if (target?.[k] && /[\\/]$/.test(target[k])) problems.push(`${k} ends with a separator`);
+  if (target?.areaPath && target?.project && !target.areaPath.startsWith(target.project)) problems.push('areaPath does not start with the project name');
+  return problems;
+}
+
 /**
  * Builds Epic → Feature → Requirement items for a CMMI process project.
  * target: { project, areaPath, iterationPath?, requirementType? }
@@ -31,8 +41,9 @@ export function buildManifest(storiesMarkdown, target) {
           title: `${s.id} · ${s.title}`,
           parent: f.id,
           priority: prio,
-          tags: ['PhaseZero', s.phase && `Phase ${s.phase}`, s.priority].filter(Boolean).join('; '),
-          description: `<p>${md2html(s.story)}</p><p><b>Source:</b> ${md2html(s.source)}</p>${
+          // No tags: creating a new tag is often permission-blocked (TF401289) and fails the whole write.
+          // Category travels in the description instead.
+          description: `<p>${md2html(s.story)}</p><p><b>Priority:</b> ${md2html(s.priority || 'not set')} · <b>Phase:</b> ${md2html(s.phase || 'not set')} · <b>Team:</b> ${md2html(s.team || 'not set')}</p><p><b>Source:</b> ${md2html(s.source)}</p>${
             s.dependencies ? `<p><b>Dependencies:</b> ${md2html(s.dependencies)}</p>` : ''
           }${s.privacy ? `<p><b>Privacy:</b> ${md2html(s.privacy)}</p>` : ''}${
             s.openQuestions ? `<p><b>Open questions:</b> ${md2html(s.openQuestions)}</p>` : ''

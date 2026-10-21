@@ -43,7 +43,7 @@ status: Template v1
 | Scheduling team | | |
 
 ### A2. Progress and forecast (Governance · Schedule)
-| Team | Sprint (by dates) | Target | Done | Achieved % | Variance vs baseline |
+| Team | Sprint (by dates) | Committed | Done | Achieved % (actual vs actual – no approved plan) |
 |---|---|---|---|---|---|
 
 Week-over-week:
@@ -69,6 +69,10 @@ Week-over-week:
 |---|---|---|---|
 
 > Carryover check: verified by live pull. If no item was re-planned, completion % is **not comparable week to week**.
+
+### A5b. Findings – diagnostic standard *(Governance)*
+| Finding | Evidence | Root cause (measurement or delivery fault) | Corrective action (owner, date) | Preventive action |
+|---|---|---|---|---|
 
 ### A6. Dependencies (Governance · Resources)
 | ID | Who waits | On whom | Required by | Status |

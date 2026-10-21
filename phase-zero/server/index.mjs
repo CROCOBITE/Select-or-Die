@@ -12,17 +12,23 @@ import { tablesToXlsx } from './lib/xlsx.mjs';
 import { REVIEWERS, reviewersFor, runReview, reviewCode } from './lib/reviews.mjs';
 import { generateArtifacts } from './lib/generator.mjs';
 import { liveReview, loadSkillText, MODEL } from './lib/ai.mjs';
-import { APPROVAL_PHRASE, isApproved, buildManifest, manifestToMarkdown } from './lib/ado.mjs';
+import { APPROVAL_PHRASE, isApproved, buildManifest, manifestToMarkdown, validateTarget } from './lib/ado.mjs';
+import { SKILLS } from './lib/skills.mjs';
+import { analyseTickets, fivePointRule } from './lib/integrity.mjs';
+import { buildMinutes, applyNaming } from './lib/minutes.mjs';
+import { renderExecutiveHtml, executiveTemplate } from './lib/executive.mjs';
+import { kpiReplyTemplate } from './lib/leadership.mjs';
 import { extractRaidCandidates } from './lib/teams.mjs';
 import { buildDashboard } from './lib/dashboard.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WORKSPACE = path.resolve(process.env.PHASE_ZERO_WORKSPACE || path.join(ROOT, 'workspace'));
 const DIST = path.join(ROOT, 'web', 'dist');
-const SKILLS = path.join(WORKSPACE, 'skills');
+const SKILLS_DIR = path.join(WORKSPACE, 'skills');
 const OUTBOX = path.join(WORKSPACE, 'outbox');
 const ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', ...(process.env.PHASE_ZERO_HOSTS || '').split(',').filter(Boolean)]);
 
+const skillDir = (id) => readConfig().skillAliases?.[id] || id;
 const readConfig = () => {
   const f = path.join(WORKSPACE, 'config.json');
   return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : {};
@@ -141,6 +147,12 @@ function codeFiles() {
   return out;
 }
 
+// ------------------------------------------------------------------ templates for new artifacts
+const TEMPLATES = {
+  'kpi-reply': (p, b) => ({ key: `KPI-REPLY-${Date.now().toString(36).toUpperCase()}`, title: `Leadership KPI reply – ${b.scope || p.name}`, type: 'kpi-reply', gate: 'G5', content: kpiReplyTemplate({ scope: b.scope || p.name, asAt: b.asAt || new Date().toISOString().slice(0, 10), pm: b.by || p.owner }) }),
+  executive: (p, b) => ({ key: `EXEC-${Date.now().toString(36).toUpperCase()}`, title: 'Executive per-team delivery view', type: 'executive', gate: 'G5', content: executiveTemplate({ pm: b.by || p.owner, teams: (b.teams || '').split('\n').map((t) => t.trim()).filter(Boolean) }) }),
+};
+
 // ------------------------------------------------------------------ routes
 export function createApp(store) {
   const routes = [];
@@ -159,7 +171,7 @@ export function createApp(store) {
     approvalPhrase: APPROVAL_PHRASE,
     ado: readConfig().ado || null,
     workspace: path.relative(ROOT, WORKSPACE) || WORKSPACE,
-    skillsAvailable: fs.existsSync(SKILLS) ? fs.readdirSync(SKILLS) : [],
+    skillsAvailable: fs.existsSync(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR) : [],
   }));
 
   on('GET', '/api/projects', () => store.db.projects.map((p) => ({ ...p, artifacts: store.artifacts(p.id).length })));
@@ -236,7 +248,7 @@ export function createApp(store) {
     if (!reviewer) throw fail(400, 'Unknown reviewer');
     if (body.mode === 'live') {
       if (body.confirm !== true) throw fail(428, 'Live review needs explicit human confirmation');
-      const out = await liveReview({ skill: reviewer.skill, skillText: loadSkillText(SKILLS, reviewer.skill), content: v.content });
+      const out = await liveReview({ skill: reviewer.skill, skillText: loadSkillText(SKILLS_DIR, skillDir(reviewer.skill)), content: v.content });
       return store.addReview({ artifactId: id, n: v.n, sha: v.sha, reviewer: reviewer.id, skill: reviewer.skill, mode: 'live', by: body.by || 'pm', model: out.model, summary: out.summary, findings: out.findings, score: Math.max(0, 100 - out.findings.length * 5) });
     }
     const out = runReview(reviewer.id, v.content);
@@ -249,7 +261,7 @@ export function createApp(store) {
       if (body.confirm !== true) throw fail(428, 'Live review needs explicit human confirmation');
       const skill = body.skill || 'refactor';
       const text = files.map((f) => `// FILE: ${f.path}\n${f.text}`).join('\n\n');
-      return { mode: 'live', skill, ...(await liveReview({ skill, skillText: loadSkillText(SKILLS, skill), content: text })) };
+      return { mode: 'live', skill, ...(await liveReview({ skill, skillText: loadSkillText(SKILLS_DIR, skillDir(skill)), content: text })) };
     }
     return { mode: 'offline', ...reviewCode(files) };
   });
@@ -265,7 +277,10 @@ export function createApp(store) {
       const sheets = parseTables(v.content).map((t) => ({ name: t.heading.replace(/^[\d.]+\s*/, ''), headers: t.headers, rows: t.rows }));
       return { __raw: tablesToXlsx(sheets), type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', file: `${base}.xlsx` };
     }
-    throw fail(400, 'format must be md, docx or xlsx');
+    if (fmt === 'html' && a.type === 'executive') {
+      return { __raw: Buffer.from(renderExecutiveHtml(v.content, { title: a.title })), type: 'text/html; charset=utf-8', file: `${base}.html` };
+    }
+    throw fail(400, 'format must be md, docx, xlsx (or html for executive pages)');
   });
 
   on('POST', '/api/projects/:id/ado/preview', ({ id }) => {
@@ -273,7 +288,7 @@ export function createApp(store) {
     const s = byKey(id, 'STORIES');
     if (!s) throw fail(404, 'Project has no STORIES artifact');
     const target = readConfig().ado || { project: 'not configured', areaPath: 'not configured' };
-    return { ...buildManifest(current(store, s).content, target), version: s.currentVersion };
+    return { ...buildManifest(current(store, s).content, target), version: s.currentVersion, targetProblems: validateTarget(target) };
   });
 
   on('POST', '/api/projects/:id/ado/approve', ({ id, body }) => {
@@ -283,7 +298,8 @@ export function createApp(store) {
     const s = byKey(id, 'STORIES');
     if (!s) throw fail(404, 'Project has no STORIES artifact');
     const target = readConfig().ado;
-    if (!target?.project || !target?.areaPath) throw fail(409, 'ADO target not configured in workspace/config.json');
+    const problems = validateTarget(target);
+    if (problems.length) throw fail(409, `ADO target in workspace/config.json: ${problems.join('; ')}`);
     const v = current(store, s);
     const manifest = buildManifest(v.content, target);
     const approval = store.addApproval({ projectId: id, by: body.by.trim(), phrase: APPROVAL_PHRASE, artifactKey: s.key, artifactId: s.id, version: v.n, sha: v.sha, items: manifest.items.map((i) => i.ref) });
@@ -300,6 +316,39 @@ export function createApp(store) {
     const extracted = extractRaidCandidates(body.text);
     store.addTeamsLog({ projectId: id, by: body.by || 'pm', chars: body.text.length, extracted });
     return { extracted };
+  });
+
+  on('GET', '/api/skills', () => {
+    const counts = {};
+    for (const r of REVIEWERS) counts[r.skill] = [...(counts[r.skill] || []), r.name];
+    return SKILLS.map((s) => ({ ...s, reviewers: counts[s.id] || [], textAvailable: fs.existsSync(path.join(SKILLS_DIR, skillDir(s.id))) }));
+  });
+
+  on('POST', '/api/tickets/analyse', ({ body }) => {
+    if (!body.csv?.trim()) throw fail(400, 'Paste or upload the ticket export (CSV)');
+    return analyseTickets(body.csv, { groups: body.groups || readConfig().ticketGroups || {}, periodEnd: body.periodEnd || null });
+  });
+
+  on('POST', '/api/integrity/five-point', ({ body }) => fivePointRule(body.series || {}));
+
+  on('POST', '/api/projects/:id/minutes', ({ id, body }) => {
+    projectOr404(id);
+    if (!body.notes?.trim()) throw fail(400, 'Paste the meeting notes');
+    const out = buildMinutes(applyNaming(body.notes), body.meta || {});
+    if (body.save) {
+      const a = store.createArtifact({ projectId: id, key: `MINUTES-${Date.now().toString(36).toUpperCase()}`, title: body.meta?.title || 'Meeting minutes', type: 'minutes', gate: 'G3', content: out.markdown, author: body.by || 'pm', message: 'Minutes from meeting notes' });
+      return { ...out, artifactId: a.id };
+    }
+    return out;
+  });
+
+  on('POST', '/api/projects/:id/artifacts', ({ id, body }) => {
+    projectOr404(id);
+    const tpl = TEMPLATES[body.type];
+    if (!tpl) throw fail(400, `Unknown template ${body.type}`);
+    const p = store.project(id);
+    const a = store.createArtifact({ projectId: id, ...tpl(p, body), author: body.by || 'pm', message: `New ${body.type} from template` });
+    return a;
   });
 
   on('GET', '/api/projects/:id/audit', ({ id }) => store.db.audit.filter((e) => e.projectId === id || store.artifacts(id).some((a) => a.id === e.artifactId)).slice(-200).reverse());

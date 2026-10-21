@@ -177,6 +177,10 @@ ${(risks.length ? risks : ['not set']).map((r, n) => `| R-${String(n + 1).padSta
 | ID | Waiting party | Depends on | Direction | Required by | Owner | Status | Source |
 |---|---|---|---|---|---|---|---|
 
+## Findings (diagnostic standard)
+| Finding | Evidence | Root cause | Corrective action | Preventive action | Owner |
+|---|---|---|---|---|---|
+
 ## Actions (management reads this sheet)
 | ID | Action | Owner | Due date | RAG | Status | Decision required from |
 |---|---|---|---|---|---|---|

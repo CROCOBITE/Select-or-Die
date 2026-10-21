@@ -3,6 +3,10 @@
 // PMO RAID/weekly discipline, charter rules, devops-rollout-plan, and the code-review skills).
 // Findings: { severity: 'blocker'|'major'|'minor'|'info', rule, message, where }
 import { parseTables, parseStories, allStories } from './md.mjs';
+import { kpiRuleSweep, baselineRule, evidenceRule, processNotesRule, basisRule, diagnosticStandard } from './integrity.mjs';
+import { reviewKpiReply } from './leadership.mjs';
+import { reviewExecutive } from './executive.mjs';
+import { namingFindings } from './minutes.mjs';
 
 const finding = (severity, rule, message, where = '') => ({ severity, rule, message, where });
 const WEIGHT = { blocker: 25, major: 10, minor: 3, info: 0 };
@@ -139,7 +143,15 @@ function raid(content) {
       if (g < 0 || !/^(high|medium|low)$/i.test(r[g] || '')) findings.push(finding('major', 'RAG values', 'RAG must be High / Medium / Low.', r[0]));
       if (s < 0 || !r[s]) findings.push(finding('major', 'Action status', 'Action without status.', r[0]));
     }
+    if (col(actions, /decision required/i) < 0) findings.push(finding('major', 'Decision required from', 'Actions register has no "Decision required from" column.'));
   }
+  const issues = reg(/^issues/i);
+  if (issues && col(issues, /age/i) < 0) findings.push(finding('minor', 'Issue age', 'Issues register has no age column; age is the pressure indicator.'));
+  if (/\b(data is (messy|bad|poor)|data (problems|issues))\b/i.test(content) && !/\b(completeness|accuracy|consistency|timeliness|validity)\b/i.test(content))
+    findings.push(finding('minor', 'Data-quality dimension', 'Name the broken property: completeness, accuracy, consistency, timeliness or validity.'));
+  const esc = reg(/escalation/i);
+  if (esc && col(esc, /response[- ]by|respond by|needed by|by$/i) < 0)
+    findings.push(finding('minor', 'Escalation deadline', 'Escalations register has no response-by column; an escalation with no deadline has no force.'));
   const assumptions = reg(/^assumptions/i);
   if (assumptions) {
     const c = col(assumptions, /consequence/i);
@@ -160,7 +172,8 @@ const WEEKLY = ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A5a', 'A6', 'A7', 'A8', 'A9
 function weekly(content) {
   const findings = [];
   for (const s of WEEKLY) if (!new RegExp(`^#{2,4}\\s+${s}\\.`, 'm').test(content)) findings.push(finding('major', 'Locked structure', `Section ${s} missing. Sections never disappear; mark "Not supplied this week".`));
-  if (!/next issue/i.test(content)) findings.push(finding('minor', 'Document control', 'No next-issue date.'));
+  for (const [re, label] of [[/next issue/i, 'next-issue date'], [/\bversion\b/i, 'version'], [/issue date/i, 'issue date'], [/prepared by/i, 'prepared by'], [/approver/i, 'approver']])
+    if (!re.test(content)) findings.push(finding('minor', 'Document control', `No ${label} in the header.`));
   if (/\bweight\b/i.test((content.split(/### A9/)[1]?.split(/### A10/)[0] || '').split('\n').slice(1).join('\n'))) findings.push(finding('major', 'A9 no weight', 'Deliveries section must not show weight figures.'));
   return { findings };
 }
@@ -257,16 +270,40 @@ export function reviewCode(files) {
   return { findings, score: score(findings) };
 }
 
+// ---------------------------------------------------------------- report integrity (leadership-facing documents)
+const LEADERSHIP_TYPES = /^(charter|weekly|kpi-reply|executive)$/;
+function integrity(content) {
+  const type = /^type:\s*(\S+)/m.exec(content)?.[1] || '';
+  const findings = [...kpiRuleSweep(content), ...baselineRule(content), ...evidenceRule(content), ...basisRule(content)];
+  // Correction notes and method notes are expected in PMO project docs (RAID, plan); only leadership documents ban them.
+  if (LEADERSHIP_TYPES.test(type)) findings.push(...processNotesRule(content));
+  findings.unshift(finding('info', 'Summary', 'Checked: KPI-feedback rule, baseline wording, not done vs not evidenced, metric bases, process notes. Run the 5-point rule and cross-table reconciliation on the figures themselves.'));
+  return { findings };
+}
+const diagnostic = (content) => {
+  const findings = diagnosticStandard(content);
+  if (!findings.length && !/\|\s*finding/i.test(content)) findings.push(finding('minor', 'Diagnostic standard', 'No findings table. Each finding needs: finding, evidence, root cause, corrective action, preventive action.'));
+  return { findings };
+};
+const kpiReply = (content) => reviewKpiReply(content);
+const executive = (content) => reviewExecutive(content);
+const naming = (content) => ({ findings: namingFindings(content) });
+
 // ---------------------------------------------------------------- registry
 export const REVIEWERS = [
   { id: 'validating-project-scope', name: 'INVEST + Definition of Ready', skill: 'validating-project-scope', types: ['stories'], run: investDor },
   { id: 'estimating-use-cases', name: 'Use Case Points estimate', skill: 'estimating-use-cases', types: ['stories'], run: estimate },
   { id: 'structuring-requirements', name: 'NFR coverage', skill: 'structuring-requirements', types: ['stories'], run: nfr },
   { id: 'evaluating-solution-value', name: 'Solution value (objectives)', skill: 'evaluating-solution-value', types: ['charter'], run: solutionValue },
-  { id: 'charter-rules', name: 'Charter completeness', skill: 'scrum-user-stories-and-charter', types: ['charter'], run: charter },
+  { id: 'charter-rules', name: 'Charter completeness', skill: 'user-stories-and-charter', types: ['charter'], run: charter },
   { id: 'pmo-raid', name: 'RAID discipline', skill: 'pmo-raid-log', types: ['raid'], run: raid },
   { id: 'pmo-weekly', name: 'Weekly report structure', skill: 'pmo-weekly-report', types: ['weekly'], run: weekly },
   { id: 'devops-rollout-plan', name: 'Rollout readiness', skill: 'devops-rollout-plan', types: ['plan'], run: rollout },
+  { id: 'report-integrity', name: 'Report integrity (KPI-feedback rule)', skill: 'pmo-report-integrity', types: ['charter', 'plan', 'raid', 'weekly', 'release-notes', 'kpi-reply', 'executive', 'minutes'], run: integrity },
+  { id: 'diagnostic-standard', name: 'Diagnostic standard (5 blocks)', skill: 'pmo-report-integrity', types: ['raid', 'weekly'], run: diagnostic },
+  { id: 'kpi-reply-shape', name: 'KPI reply shape (Table A / B)', skill: 'leadership-kpi-reply', types: ['kpi-reply'], run: kpiReply },
+  { id: 'executive-page', name: 'Executive page', skill: 'exec-team-deliverable', types: ['executive'], run: executive },
+  { id: 'ticket-review-naming', name: 'Ticket-review naming', skill: 'ticket-review-minutes', types: ['minutes'], run: naming },
 ];
 
 export function reviewersFor(type) {

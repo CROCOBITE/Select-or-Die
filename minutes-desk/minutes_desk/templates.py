@@ -260,10 +260,10 @@ def build(template, meta, transcript, found, naming=None):
         parts.append(participants(meta, transcript))
     parts += _middle(template, meta, transcript, found)
     parts += [to_confirm(found, transcript), pmo_judgement(found)]
-    if template != "steering":
-        parts.append(as_written(found, transcript))
-    parts.append(footer(meta))
-    return apply_naming("\n\n".join(p for p in parts if p), naming)
+    body = apply_naming("\n\n".join(p for p in parts if p), naming)
+    # The speaker's own words stay as said; the naming rule applies to the minutes, not the quotes.
+    tail = [as_written(found, transcript)] if template != "steering" else []
+    return "\n\n".join([body, *tail, footer(meta)])
 
 
 def _middle(template, meta, transcript, found):

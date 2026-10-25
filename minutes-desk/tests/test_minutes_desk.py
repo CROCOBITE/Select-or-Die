@@ -134,6 +134,22 @@ class ExtractTests(unittest.TestCase):
         self.assertEqual(len(f["requirements"]), 1)
         self.assertIn("[role TBC]", f["requirements"][0]["story"])
 
+    def test_first_person_attendee_and_following_cause(self):
+        segs = [{"text": "The invoice job is down again.", "start": 1, "speaker": "Sara Nabil"},
+                {"text": "It fails because the sync job times out.", "start": 5, "speaker": "Omar Khaled"},
+                {"text": "I will retest it by 30/10.", "start": 9, "speaker": "Sara Nabil"},
+                {"text": "Omar لازم تبعت الـ fix بكرة", "start": 12, "speaker": "Laila"}]
+        f = extract.extract(segs, date(2026, 10, 25), [], ["Sara Nabil", "Omar Khaled"])
+        self.assertIn("sync job", f["issues"][0]["root_cause"])
+        owners = {a["text"][:6]: a["owner"] for a in f["actions"]}
+        self.assertEqual(owners["I will"], "Sara Nabil")
+        self.assertEqual(owners["Omar ل"], "Omar Khaled")
+
+    def test_naming_rule_spares_the_speakers_words(self):
+        t = {"engine": "import", "kind": "vtt", "segments": [{"text": "The update is in ADO.", "start": 1, "flags": []}]}
+        md = templates.build("recording", {"title": "x"}, t, extract.extract(t["segments"]))
+        self.assertIn("The update is in ADO.", md.split("## Discussion – as written")[1])
+
     def test_owner_never_guessed(self):
         found = extract.extract([{"text": "لازم حد يراجع الفاتورة", "start": 1}], date(2026, 10, 25), [])
         self.assertTrue(found["actions"][0]["owner"].startswith("TBC"))

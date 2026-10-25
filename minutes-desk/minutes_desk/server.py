@@ -38,7 +38,7 @@ class Api:
         meta = self.store.get(mid)
         meta.update(self._audience_defaults(meta))
         t = in_period(self.transcript(mid), meta.get("period_from"), meta.get("period_to"))
-        found = extract.extract(t["segments"], extract.parse_day(meta.get("date")), self.people())
+        found = extract.extract(t["segments"], extract.parse_day(meta.get("date")), self.people(), meta.get("attendees"))
         if t.get("kind") == "whatsapp":
             found["actions"] = [a for a in found["actions"] if not a["owner"].startswith("TBC") or a.get("due")]
         md = templates.build(template, dict(meta, area=self.cfg["area"], author=meta.get("author") or self.cfg["author"]),

@@ -109,8 +109,6 @@ def _text_findings(md):
         for m in pattern.finditer(body):
             if m.group(0) != written:
                 out.append(_finding("minor", "terminology", f"“{m.group(0)}” – write “{written}”"))
-    if re.search(r"\|\s*RAG[^|]*\|", md) and re.search(r"\|\s*(High|Medium|Low)\s*\|", md):
-        out.append(_finding("minor", "terminology", "A RAG column holds High/Medium/Low – that is priority; keep RAG and priority apart"))
     return out
 
 
@@ -128,7 +126,7 @@ def scorecard(md, secs, findings):
         _card("Information gathering", [] if "To confirm before sending" in secs else [1], 1,
               "Open questions are consolidated into one request pack, grouped by who answers"),
         _card("Report structure", missing, len(REQUIRED), "Summary, decisions, actions, issues and requests are all present"),
-        _card("Terminology", by_area("terminology", "wording"), 1, "House names, RAG vs priority, no vague timing"),
+        _card("Terminology", by_area("terminology", "wording"), 1, "House names (DevOps, Tickets System), no vague timing, baseline only when approved"),
     ]
     return cards
 

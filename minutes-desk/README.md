@@ -24,7 +24,7 @@ scripts/start.sh
 Without the speech libraries the tool still works for Teams transcripts, WhatsApp exports and notes. For
 recordings, run `python -m minutes_desk doctor` to see what is missing on this machine.
 
-Tests: `python -m unittest discover -s tests` (standard library only; 28 tests).
+Tests: `python -m unittest discover -s tests` (standard library only; 30 tests).
 
 ## How it works
 
@@ -170,7 +170,7 @@ Copy `config.example.json` to `workspace/config.json`. The keys:
 - `audiences`: name → template, chair, validator, distribution, classification.
 - `people`: name, role and aliases, so owners are recognised in Arabic or English.
 - `dialect`, `language`, `engine`, `model`, `chunk_seconds`, `delete_media_after_transcript`.
-- `claude`: model and effort.
+- `claude`: which Claude model and effort level drafts use.
 - `skills_dir`, `skills_for_minutes`: SKILL.md files added to the Claude drafting prompt.
 
 Third-party code and models: see `THIRD_PARTY_NOTICES.md`.

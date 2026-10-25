@@ -19,7 +19,7 @@ from .arabic import normalise
 DECISION = ["agreed", "we agreed", "decided", "decision", "approved", "approve", "we will go with", "resolution",
             "اتفقنا", "تم الاتفاق", "متفقين", "قررنا", "تقرر", "القرار", "تمت الموافقه", "وافق", "موافقه",
             "اعتماد", "اعتمدنا", "تم اعتماد", "خلاص هنمشي", "استقرينا", "اتفقنا ان", "تم التوجيه"]
-ACTION = ["action", "will send", "will share", "will prepare", "will update", "will check", "will follow",
+ACTION = ["action", "i will", "we will", "i'll", "we'll", "will send", "will share", "will prepare", "will update", "will check", "will follow",
           "to follow up", "follow up", "please", "kindly", "needs to", "need to", "assigned", "by eod",
           "لازم", "مطلوب", "يرجى", "برجاء", "رجاء", "ياريت", "هيعمل", "هتعمل", "هنعمل", "حيعمل", "هيبعت",
           "هتبعت", "هيجهز", "هيرفع", "هيسلم", "هيتابع", "هتتابع", "هيراجع", "هنراجع", "سيقوم", "يتولى",
@@ -39,6 +39,7 @@ REQUIREMENT = ["we need", "we want", "should be able", "requirement", "the syste
 SCOPE = ["new request", "new feature", "change request", "out of scope", "scope", "additional",
          "طلب جديد", "فيتشر جديده", "خارج النطاق", "اضافه جديده", "تغيير في", "مش من ضمن", "سكوب"]
 QUESTION = ["?", "؟", "not clear", "to confirm", "tbc", "مش واضح", "محتاجين نعرف", "مين المسؤول", "امتى"]
+FIRST_PERSON = ("i will", "i'll", "i can", "هعمل", "هبعت", "هجهز", "هراجع", "هتابع", "هرفع", "هسلم", "راح اسوي", "بسوي", "سأقوم")
 PMO_NOTE = ("my conclusion", "pmo:", "as pmo", "pmo note", "رأيي كـ pmo", "ملاحظه pmo")
 
 _N = {k: [normalise(c) for c in v] for k, v in {
@@ -106,9 +107,12 @@ def _explicit_date(m, meeting_day):
 
 
 def find_owner(sentence, people):
-    """A named person from the attendee list, an @mention, or a vocative 'يا فلان'. Never guessed."""
+    """A named person from the attendee list, an @mention, a vocative 'يا فلان', or the speaker
+    when they commit themselves ("I will…", "هبعت…"). Never guessed."""
     text = sentence["text"]
     norm = normalise(text)
+    if sentence.get("speaker") and norm.startswith(tuple(normalise(f) for f in FIRST_PERSON)):
+        return sentence["speaker"]
     for person in people:
         for alias in [person["name"], *person.get("aliases", [])]:
             if alias and normalise(alias) in norm:
@@ -117,11 +121,20 @@ def find_owner(sentence, people):
     return m.group(1).strip() if m else ""
 
 
-def extract(segments, meeting_day=None, people=None):
+def with_attendees(people, attendees):
+    """Attendees are owners too; their first name counts as an alias ("Omar" -> "Omar Khaled")."""
+    known = {p["name"] for p in people}
+    extra = [{"name": a, "aliases": [a.split()[0]] if len(a.split()) > 1 else []}
+             for a in attendees or [] if a not in known]
+    return list(people) + extra
+
+
+def extract(segments, meeting_day=None, people=None, attendees=None):
     meeting_day = meeting_day or date.today()
-    people = people or []
+    people = with_attendees(people or [], attendees)
     found = {k: [] for k in ("decisions", "actions", "issues", "conflicts", "requirements", "scope", "questions", "pmo")}
-    for s in sentences(segments):
+    for i, s in enumerate(sentences(segments)):
+        s["index"] = i
         _classify(s, found, meeting_day, people)
     for kind, prefix in (("decisions", "D"), ("actions", "A"), ("issues", "I"), ("requirements", "R"),
                          ("scope", "CR"), ("conflicts", "C"), ("questions", "Q")):
@@ -142,8 +155,7 @@ def _classify(s, found, meeting_day, people):
         due = resolve_due(s["text"], meeting_day)
         found["actions"].append(dict(base, owner=find_owner(s, people) or "TBC – requires assignment",
                                      due=due, status="Open"))
-    if has(norm, "issue"):
-        found["issues"].append(dict(base, root_cause=s["text"] if has(norm, "cause") else "Not established in the meeting"))
+    _classify_issue(s, norm, base, found["issues"])
     if has(norm, "conflict"):
         found["conflicts"].append(base)
     if has(norm, "requirement"):
@@ -152,6 +164,20 @@ def _classify(s, found, meeting_day, people):
         found["scope"].append(dict(base, note="Change request needed before work starts"))
     if has(norm, "question") and not has(norm, "decision"):
         found["questions"].append(base)
+
+
+def _classify_issue(s, norm, base, issues):
+    if has(norm, "issue"):
+        issues.append(dict(base, index=s["index"],
+                           root_cause=s["text"] if has(norm, "cause") else "Not established in the meeting"))
+    elif has(norm, "cause"):
+        _attach_cause(issues, s)
+
+
+def _attach_cause(issues, s):
+    """A reason given within two sentences of an open issue is that issue's stated root cause."""
+    if issues and issues[-1]["root_cause"].startswith("Not established") and s["index"] - issues[-1]["index"] <= 2:
+        issues[-1]["root_cause"] = f"{s['text']} ({s['speaker'] or 'speaker'}, {s['ref']})"
 
 
 def speakers(segments):

@@ -322,7 +322,7 @@ async function claudeConfirm() {
   const p = await api(`/api/meetings/${state.meeting.id}/claude/preview`, { method: 'POST', body: { template: state.template } });
   const masked = Object.entries(p.redactions).map(([k, v]) => `${v} ${k}`).join(', ') || 'nothing matched';
   $('#confirm').innerHTML = `<div class="confirm">
-    <strong>Send this meeting to Claude (${esc(p.model)})?</strong>
+    <strong>Send this meeting to Claude?</strong>
     <p>The transcript and meeting details below leave this computer. Masked first: ${esc(masked)}. About ${p.approx_tokens.toLocaleString()} tokens.
       Names of people and anything said about patients are <em>not</em> masked – do not send clinical case discussions.</p>
     <details><summary>See exactly what will be sent</summary><pre dir="auto">${esc(p.user)}</pre></details>

@@ -11,15 +11,15 @@ WORKSPACE = Path(os.environ.get("MINUTES_DESK_WORKSPACE", ROOT / "workspace")).r
 # Whisper-family models from the Hugging Face hub. Licences were read from each model card;
 # a model without a stated licence is listed but marked so nobody adopts it by accident.
 MODELS = [
-    {"id": "oddadmix/whisper-medium-arabic-dialectal", "label": "Mixed dialects (Egyptian, Levantine, Gulf) – medium",
+    {"id": "oddadmix/whisper-medium-arabic-dialectal", "base": "openai/whisper-medium", "label": "Mixed dialects (Egyptian, Levantine, Gulf) – medium",
      "dialects": ["egyptian", "gulf", "mixed"], "size": "medium", "licence": "apache-2.0", "cpu_ok": True},
-    {"id": "MAdel121/whisper-small-egyptian-arabic", "label": "Egyptian – small, fastest on CPU",
+    {"id": "MAdel121/whisper-small-egyptian-arabic", "base": "openai/whisper-small", "label": "Egyptian – small, fastest on CPU",
      "dialects": ["egyptian"], "size": "small", "licence": "mit", "cpu_ok": True},
-    {"id": "AbdelrahmanHassan/whisper-large-v3-egyptian-arabic", "label": "Egyptian – large-v3 (MGB-3)",
+    {"id": "AbdelrahmanHassan/whisper-large-v3-egyptian-arabic", "base": "openai/whisper-large-v3", "label": "Egyptian – large-v3 (MGB-3)",
      "dialects": ["egyptian"], "size": "large", "licence": "apache-2.0", "cpu_ok": False},
-    {"id": "wageehkhad/whisper-medium-finetuned-sada-asr", "label": "Saudi / Gulf – medium (SADA22)",
+    {"id": "wageehkhad/whisper-medium-finetuned-sada-asr", "base": "openai/whisper-medium", "label": "Saudi / Gulf – medium (SADA22)",
      "dialects": ["gulf", "saudi"], "size": "medium", "licence": "apache-2.0", "cpu_ok": True},
-    {"id": "mesoj8/whisper-large-v3-arabic-dialect-30s", "label": "Mixed dialects – large-v3 (licence not stated)",
+    {"id": "mesoj8/whisper-large-v3-arabic-dialect-30s", "base": "openai/whisper-large-v3", "label": "Mixed dialects – large-v3 (licence not stated)",
      "dialects": ["mixed"], "size": "large", "licence": None, "cpu_ok": False},
     {"id": "openai/whisper-large-v3", "label": "Baseline – MSA and English (vanilla Whisper)",
      "dialects": ["msa", "english"], "size": "large", "licence": "apache-2.0", "cpu_ok": False},

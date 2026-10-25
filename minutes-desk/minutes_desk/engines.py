@@ -143,13 +143,25 @@ def _pipeline(model_id, dev):
         from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
         dtype = torch.float16 if dev == "cuda" else torch.float32
-        processor = AutoProcessor.from_pretrained(model_id)
+        processor = _processor(AutoProcessor, model_id)
         model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, low_cpu_mem_usage=True, **_dtype_kw(dtype))
         model.to(dev)
         # device is set on the model; passing device_map *and* device to pipeline() conflicts.
         _PIPES[key] = pipeline("automatic-speech-recognition", model=model, tokenizer=processor.tokenizer,
                                feature_extractor=processor.feature_extractor, device=dev, **_dtype_kw(dtype))
     return _PIPES[key]
+
+
+def _processor(auto, model_id):
+    """Some fine-tunes were saved with a newer tokenizer format; Whisper fine-tunes share the
+    base model's tokenizer and feature extractor, so fall back to the base."""
+    try:
+        return auto.from_pretrained(model_id)
+    except (AttributeError, ValueError, OSError, ImportError) as exc:
+        base = next((m.get("base") for m in config.MODELS if m["id"] == model_id), None)
+        if not base:
+            raise RuntimeError(f"Could not load the processor for {model_id}: {exc}") from exc
+        return auto.from_pretrained(base)
 
 
 def _dtype_kw(dtype):

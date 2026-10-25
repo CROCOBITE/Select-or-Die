@@ -146,10 +146,19 @@ def _pipeline(model_id, dev):
         processor = _processor(AutoProcessor, model_id)
         model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, low_cpu_mem_usage=True, **_dtype_kw(dtype))
         model.to(dev)
+        _fix_generation_config(model.generation_config)
         # device is set on the model; passing device_map *and* device to pipeline() conflicts.
         _PIPES[key] = pipeline("automatic-speech-recognition", model=model, tokenizer=processor.tokenizer,
                                feature_extractor=processor.feature_extractor, device=dev, **_dtype_kw(dtype))
     return _PIPES[key]
+
+
+def _fix_generation_config(gc):
+    """Configs saved by newer transformers releases store eos_token_id as a list, which breaks
+    Whisper's timestamp decoding on 4.x; a single id is equivalent."""
+    eos = getattr(gc, "eos_token_id", None)
+    if isinstance(eos, (list, tuple)) and len(eos) == 1:
+        gc.eos_token_id = eos[0]
 
 
 def _processor(auto, model_id):

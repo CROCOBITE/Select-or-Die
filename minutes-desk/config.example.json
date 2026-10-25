@@ -1,0 +1,19 @@
+{
+  "dialect": "mixed",
+  "language": "ar",
+  "author": "Your name, Project Manager",
+  "area": "PMO",
+  "delete_media_after_transcript": true,
+  "audiences": {
+    "Weekly ticket review": {"template": "ticket", "chair": "", "validator": "", "distribution": [], "classification": "Internal"},
+    "Steering committee": {"template": "steering", "chair": "", "validator": "", "distribution": [], "classification": "Confidential"},
+    "Digitalization committee": {"template": "committee", "chair": "", "validator": "", "distribution": []}
+  },
+  "people": [
+    {"name": "Full Name", "role": "Scrum Master", "aliases": ["Short name", "الاسم بالعربي"]}
+  ],
+  "naming": {},
+  "skills_dir": "",
+  "skills_for_minutes": [],
+  "skill_aliases": {}
+}

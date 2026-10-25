@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minutes Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700;800&family=Noto+Kufi+Arabic:wght@400;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<div class="shell">
+  <nav class="side" aria-label="Main">
+    <div class="brand">Minutes Desk<small>Recordings → minutes, on this computer</small></div>
+    <button class="btn primary" id="new-meeting">+ New meeting</button>
+    <h2 class="side-h">Meetings</h2>
+    <ul id="meetings" class="list"></ul>
+    <h2 class="side-h">Tools</h2>
+    <button class="navitem" data-view="pilot">Pilot – measure accuracy</button>
+    <button class="navitem" data-view="doctor">Doctor – this computer</button>
+    <button class="navitem" data-view="skills">Skills checklist</button>
+    <button class="navitem" data-view="audit">Audit log</button>
+    <div class="theme" role="group" aria-label="Theme">
+      <button id="theme-light" aria-pressed="false" title="Light">☀</button>
+      <button id="theme-dark" aria-pressed="false" title="Dark">☾</button>
+    </div>
+  </nav>
+  <main class="main" id="main" tabindex="-1">
+    <p class="muted">Loading…</p>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

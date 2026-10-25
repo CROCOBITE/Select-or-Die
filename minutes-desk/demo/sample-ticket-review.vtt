@@ -1,0 +1,30 @@
+WEBVTT
+
+NOTE Invented sample meeting for the demo – names and tickets are fictional.
+
+00:00:02.000 --> 00:00:09.000
+<v Laila Hassan>Good morning. We have three tickets today: #4821, #4830 and the new booking request.
+
+00:00:10.000 --> 00:00:18.000
+<v Sara Nabil>QA بتقول التذكرة #4821 لسه فيها مشكلة في الـ invoice بس التيم بيقول اتحلت في الـ release اللي فاتت.
+
+00:00:19.000 --> 00:00:27.000
+<v Omar Khaled>The fix was deployed on Sunday, but the root cause is the sync job, because it times out on large files.
+
+00:00:28.000 --> 00:00:35.000
+<v Laila Hassan>اتفقنا إن الريليز الجاي يكون يوم الخميس وفيه الـ fix النهائي.
+
+00:00:36.000 --> 00:00:43.000
+<v Laila Hassan>يا Omar لازم تبعت الـ fix للـ QA بكرة قبل الساعة اتنين.
+
+00:00:44.000 --> 00:00:52.000
+<v Sara Nabil>I will retest #4830 and share the result by 30/10.
+
+00:00:53.000 --> 00:01:02.000
+<v Karim Fathy>عايزين السيستم يبعت رسالة للمريض لما الحجز يتأكد، ده طلب جديد من الإدارة.
+
+00:01:03.000 --> 00:01:09.000
+<v Laila Hassan>That is a new request, so it needs a change request. Who owns the change request?
+
+00:01:10.000 --> 00:01:16.000
+<v Karim Fathy>We are working on it, the update is in ADO.

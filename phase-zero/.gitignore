@@ -1,0 +1,6 @@
+# Private, organisation-specific content never leaves the PM's machine (DEC-12).
+workspace/
+data/
+node_modules/
+web/node_modules/
+*.tmp

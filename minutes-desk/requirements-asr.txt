@@ -1,0 +1,8 @@
+# Speech recognition on this computer (Whisper engine). For an NVIDIA GPU install torch from
+# https://pytorch.org first (CUDA build); on CPU-only machines the default wheel is fine.
+numpy>=1.26
+torch>=2.3
+transformers>=4.44,<5
+accelerate>=0.33
+protobuf>=4
+sentencepiece>=0.2

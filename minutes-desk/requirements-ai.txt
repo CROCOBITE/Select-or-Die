@@ -1,0 +1,2 @@
+# Optional: Claude drafts of the minutes (only after you confirm each send).
+anthropic>=0.135

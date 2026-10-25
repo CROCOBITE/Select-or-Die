@@ -93,14 +93,14 @@ def transcribe(path, cfg, engine="", model="", progress=lambda pct, msg: None, s
 
 
 def speed_hint(segments, speed):
-    """Natural speech runs at roughly 10–16 characters per second. Much faster after correction
-    suggests the file was sped up and the speed setting is wrong."""
+    """Natural Arabic meeting speech measured about 8–9 letters per second (spaces excluded); a 2x file read
+    as 1x measured 14.6. Well above natural suggests the file was sped up and the speed setting is wrong."""
     rates = sorted(len(s["text"].replace(" ", "")) / (s["end"] - s["start"])
                    for s in segments if s.get("end") and s.get("start") is not None and s["end"] - s["start"] >= 3)
     if len(rates) < 5:
         return ""
     median = rates[len(rates) // 2]
-    if median > 22:
+    if median > 13:
         return f"Speech runs at {median:.0f} characters per second – the file may be sped up; set its speed and transcribe again"
     if median < 6 and float(speed or 1) > 1:
         return f"Speech runs at {median:.0f} characters per second – check the speed setting ({speed}x)"

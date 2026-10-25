@@ -109,7 +109,39 @@ the Teams transcript.
 
 ## Measured accuracy
 
-<!-- benchmark table inserted below -->
+The test audio was 2 min 32 s of public Egyptian Arabic TV speech (six MGB-3 clips, joined), checked against
+the reference text. The tool ran on a 4-core CPU with no GPU. Word and letter error rates are computed after
+Arabic normalisation (alef, ya and ta marbuta forms unified; diacritics removed). The 1.5x and 2x files were made
+by speeding up the same audio.
+
+| Model | File | Setting | WER | CER | Time |
+|---|---|---|---|---|---|
+| `oddadmix/whisper-medium-arabic-dialectal` | 1x | normal | **41.9%** | **22.1%** | 6 min |
+| `oddadmix/whisper-medium-arabic-dialectal` | 1x | pace 0.8x | 44.1% | 22.7% | 6 min |
+| `oddadmix/whisper-medium-arabic-dialectal` | 2x | restored to 1x | 70.3% | 41.7% | 5.5 min |
+| `MAdel121/whisper-small-egyptian-arabic` | 1x | normal, before the loop fix | 71.4% | 72.4% | 3.5 min |
+| `MAdel121/whisper-small-egyptian-arabic` | 1x | normal | 58.7% | 30.4% | 4.3 min |
+| `MAdel121/whisper-small-egyptian-arabic` | 1x | pace 0.8x | 60.1% | 31.1% | 2 min |
+| `MAdel121/whisper-small-egyptian-arabic` | 1.5x | restored to 1x | 67.8% | 39.2% | 3.5 min |
+| `MAdel121/whisper-small-egyptian-arabic` | 2x | restored to 1x | 75.8% | 44.4% | 2.8 min |
+| `MAdel121/whisper-small-egyptian-arabic` | 2x | **not** restored | 81.3% | 49.3% | 3.9 min |
+
+What this shows:
+
+- **The medium dialect model is clearly better** (42% vs 59% WER). It is the default on CPU. Expect about 2.5x
+  the audio length on a 4-core laptop.
+- **Restore sped-up files.** A 2x file read as 1x loses more words, and its times run at half the meeting clock
+  (the last segment ended at 75 s instead of 150 s). Restoring fixes the times, but a 2x file still loses
+  accuracy. **Keep a 1x copy of meetings you will minute.**
+- **Pace 0.8x did not help** on this audio (+1.4 to +2.2 WER points). It stays an option to test in Pilot, not
+  a default.
+- **The loop fix matters.** Without it, the small model looped ("هاااا…") and lost whole sentences.
+- TV speech with laughter and cross-talk is harder than most meetings. Even so, a 40% WER means every
+  decision, owner, date and number must be checked against the recording. The checks and the "To confirm"
+  pack are built for that. Where Teams recorded its own transcript, use it.
+
+The benchmark audio is public; your own meetings were not used. A silent screen recording from the reports
+archive was refused by the silence gate. Before that gate existed, Whisper produced invented text for it.
 
 ## Rollout
 
